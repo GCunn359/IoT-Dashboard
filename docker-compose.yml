@@ -1,0 +1,47 @@
+services:
+  iot-dashboard:
+    build: .
+    container_name: iot-dashboard
+    environment:
+      DATABASE_URL: file:/data/iot-dashboard.sqlite
+      SETTINGS_PIN: ${SETTINGS_PIN:?Set SETTINGS_PIN before starting the dashboard}
+      IOT_ACCESS_MODE: routed
+      IOT_SUBNET_CIDR: 192.168.30.0/24
+      IOT_SUBNET_NOTES: "TrueNAS/app may initiate restricted connections to IoT devices; IoT devices should not initiate LAN access."
+      MQTT_HOST: mqtt
+      MQTT_PORT: 1883
+      MQTT_USERNAME: ""
+      MQTT_PASSWORD: ""
+      MQTT_USE_TLS: "false"
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      mqtt:
+        condition: service_healthy
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: iot-dashboard-mqtt
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 1883"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 5s

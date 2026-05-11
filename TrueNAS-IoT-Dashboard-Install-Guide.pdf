@@ -1,0 +1,303 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+4 0 obj
+<< /Length 5600 >>
+stream
+BT /F2 23 Tf 51.639999999999986 793.89 Td 0.059 0.318 0.196 rg (TrueNAS SCALE IoT Dashboard Install Guide) Tj ET
+BT /F1 10 Tf 48 757.89 Td 0.122 0.176 0.165 rg (Guided deployment document for installing the IoT Dashboard as a TrueNAS SCALE Custom App,) Tj ET
+BT /F1 10 Tf 48 743.89 Td 0.122 0.176 0.165 rg (configuring datasets, ports, MQTT, app settings, and safe device discovery.) Tj ET
+1.000 0.973 0.882 rg 44 677.89 507.28 53.00 re f
+1.000 0.890 0.639 RG 44 677.89 507.28 53.00 re S
+BT /F1 9 Tf 52 714.89 Td 0.361 0.231 0.000 rg (Important: this guide assumes the dashboard project has been pushed to GitHub without) Tj ET
+BT /F1 9 Tf 52 701.89 Td 0.361 0.231 0.000 rg (the local .env file. The app is designed for trusted local network use first, not public) Tj ET
+BT /F1 9 Tf 52 688.89 Td 0.361 0.231 0.000 rg (internet exposure.) Tj ET
+BT /F2 15 Tf 48 661.89 Td 0.059 0.318 0.196 rg (1. Pre-install checklist) Tj ET
+BT /F1 10 Tf 48 639.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 639.89 Td 0.122 0.176 0.165 rg (TrueNAS SCALE Apps service is enabled and working.) Tj ET
+BT /F1 10 Tf 48 624.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 624.89 Td 0.122 0.176 0.165 rg (GitHub repository contains Dockerfile, docker-compose.yml, src/, public/, package files,) Tj ET
+BT /F1 9.5 Tf 62 611.89 Td 0.122 0.176 0.165 rg (and mosquitto/config/mosquitto.conf.) Tj ET
+BT /F1 10 Tf 48 596.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 596.89 Td 0.122 0.176 0.165 rg (Do not push .env, local SQLite files, data folders, or secrets.) Tj ET
+BT /F1 10 Tf 48 581.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 581.89 Td 0.122 0.176 0.165 rg (Dashboard web port: 3000 TCP.) Tj ET
+BT /F1 10 Tf 48 566.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 566.89 Td 0.122 0.176 0.165 rg (Mosquitto MQTT port: 1883 TCP.) Tj ET
+BT /F1 10 Tf 48 551.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 551.89 Td 0.122 0.176 0.165 rg (IoT subnet: 192.168.30.0/24. IoT gateway: 192.168.30.1.) Tj ET
+BT /F1 10 Tf 48 536.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 536.89 Td 0.122 0.176 0.165 rg (Settings PIN for current test deployment: YOUR_PRIVATE_PIN. Change before broader) Tj ET
+BT /F1 9.5 Tf 62 523.89 Td 0.122 0.176 0.165 rg (production use.) Tj ET
+BT /F2 15 Tf 48 497.89 Td 0.059 0.318 0.196 rg (2. Create TrueNAS datasets) Tj ET
+BT /F1 10 Tf 48 475.89 Td 0.122 0.176 0.165 rg (In TrueNAS SCALE, open Storage > Datasets. Create a parent dataset for app data, then create) Tj ET
+BT /F1 10 Tf 48 461.89 Td 0.122 0.176 0.165 rg (child datasets for the dashboard database and Mosquitto persistence.) Tj ET
+0.933 0.973 0.949 rg 44 374.89 507.28 74.00 re f
+0.737 0.847 0.765 RG 44 374.89 507.28 74.00 re S
+BT /F3 7.5 Tf 52 432.89 Td 0.090 0.208 0.169 rg (apps) Tj ET
+BT /F3 7.5 Tf 52 422.89 Td 0.090 0.208 0.169 rg (apps/iot-dashboard) Tj ET
+BT /F3 7.5 Tf 52 412.89 Td 0.090 0.208 0.169 rg (apps/iot-dashboard/data) Tj ET
+BT /F3 7.5 Tf 52 402.89 Td 0.090 0.208 0.169 rg (apps/iot-dashboard/mosquitto-config) Tj ET
+BT /F3 7.5 Tf 52 392.89 Td 0.090 0.208 0.169 rg (apps/iot-dashboard/mosquitto-data) Tj ET
+BT /F3 7.5 Tf 52 382.89 Td 0.090 0.208 0.169 rg (apps/iot-dashboard/mosquitto-log) Tj ET
+BT /F1 10 Tf 48 365.89 Td 0.122 0.176 0.165 rg (Example full paths, replacing YOUR_POOL with your actual pool name:) Tj ET
+0.933 0.973 0.949 rg 44 298.89 507.28 54.00 re f
+0.737 0.847 0.765 RG 44 298.89 507.28 54.00 re S
+BT /F3 7.5 Tf 52 336.89 Td 0.090 0.208 0.169 rg (/mnt/YOUR_POOL/apps/iot-dashboard/data) Tj ET
+BT /F3 7.5 Tf 52 326.89 Td 0.090 0.208 0.169 rg (/mnt/YOUR_POOL/apps/iot-dashboard/mosquitto-config) Tj ET
+BT /F3 7.5 Tf 52 316.89 Td 0.090 0.208 0.169 rg (/mnt/YOUR_POOL/apps/iot-dashboard/mosquitto-data) Tj ET
+BT /F3 7.5 Tf 52 306.89 Td 0.090 0.208 0.169 rg (/mnt/YOUR_POOL/apps/iot-dashboard/mosquitto-log) Tj ET
+BT /F1 10 Tf 48 289.89 Td 0.122 0.176 0.165 rg (These datasets keep the SQLite database and MQTT broker data persistent across container) Tj ET
+BT /F1 10 Tf 48 275.89 Td 0.122 0.176 0.165 rg (upgrades and restarts.) Tj ET
+BT /F2 15 Tf 48 250.89 Td 0.059 0.318 0.196 rg (3. Add Mosquitto configuration) Tj ET
+BT /F1 10 Tf 48 228.89 Td 0.122 0.176 0.165 rg (Create this file on TrueNAS:) Tj ET
+0.933 0.973 0.949 rg 44 191.89 507.28 24.00 re f
+0.737 0.847 0.765 RG 44 191.89 507.28 24.00 re S
+BT /F3 7.5 Tf 52 199.89 Td 0.090 0.208 0.169 rg (/mnt/YOUR_POOL/apps/iot-dashboard/mosquitto-config/mosquitto.conf) Tj ET
+BT /F1 10 Tf 48 182.89 Td 0.122 0.176 0.165 rg (Use this content for the first trusted local deployment:) Tj ET
+0.933 0.973 0.949 rg 44 105.89 507.28 64.00 re f
+0.737 0.847 0.765 RG 44 105.89 507.28 64.00 re S
+BT /F3 7.5 Tf 52 153.89 Td 0.090 0.208 0.169 rg (listener 1883 0.0.0.0) Tj ET
+BT /F3 7.5 Tf 52 143.89 Td 0.090 0.208 0.169 rg (allow_anonymous true) Tj ET
+BT /F3 7.5 Tf 52 133.89 Td 0.090 0.208 0.169 rg (persistence true) Tj ET
+BT /F3 7.5 Tf 52 123.89 Td 0.090 0.208 0.169 rg (persistence_location /mosquitto/data/) Tj ET
+BT /F3 7.5 Tf 52 113.89 Td 0.090 0.208 0.169 rg (log_dest stdout) Tj ET
+1.000 0.973 0.882 rg 44 62.89 507.28 40.00 re f
+1.000 0.890 0.639 RG 44 62.89 507.28 40.00 re S
+BT /F1 9 Tf 52 86.89 Td 0.361 0.231 0.000 rg (Security note: anonymous MQTT is acceptable only for a trusted local/test network.) Tj ET
+BT /F1 9 Tf 52 73.89 Td 0.361 0.231 0.000 rg (Later, add MQTT users/passwords and restrict port 1883 to trusted LAN clients.) Tj ET
+BT /F1 8 Tf 48 28 Td 0.322 0.439 0.392 rg (IoT Dashboard TrueNAS SCALE Install Guide) Tj ET
+BT /F1 8 Tf 507.28 28 Td 0.322 0.439 0.392 rg (Page 1) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 12 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 6016 >>
+stream
+BT /F2 15 Tf 48 787.89 Td 0.059 0.318 0.196 rg (4. Configure the TrueNAS Custom App YAML) Tj ET
+BT /F1 10 Tf 48 765.89 Td 0.122 0.176 0.165 rg (In TrueNAS SCALE, go to Apps > Discover Apps > Custom App and choose the custom YAML /) Tj ET
+BT /F1 10 Tf 48 751.89 Td 0.122 0.176 0.165 rg (Docker Compose style deployment. Replace YOUR_GITHUB_USERNAME, YOUR_REPO_NAME, YOUR_POOL,) Tj ET
+BT /F1 10 Tf 48 737.89 Td 0.122 0.176 0.165 rg (and TRUENAS_IP before saving.) Tj ET
+0.933 0.973 0.949 rg 44 220.89 507.28 504.00 re f
+0.737 0.847 0.765 RG 44 220.89 507.28 504.00 re S
+BT /F3 7.5 Tf 52 708.89 Td 0.090 0.208 0.169 rg (services:) Tj ET
+BT /F3 7.5 Tf 52 698.89 Td 0.090 0.208 0.169 rg (iot-dashboard:) Tj ET
+BT /F3 7.5 Tf 52 688.89 Td 0.090 0.208 0.169 rg (build:) Tj ET
+BT /F3 7.5 Tf 52 678.89 Td 0.090 0.208 0.169 rg (context: https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME.git) Tj ET
+BT /F3 7.5 Tf 52 668.89 Td 0.090 0.208 0.169 rg (container_name: iot-dashboard) Tj ET
+BT /F3 7.5 Tf 52 658.89 Td 0.090 0.208 0.169 rg (environment:) Tj ET
+BT /F3 7.5 Tf 52 648.89 Td 0.090 0.208 0.169 rg (DATABASE_URL: file:/data/iot-dashboard.sqlite) Tj ET
+BT /F3 7.5 Tf 52 638.89 Td 0.090 0.208 0.169 rg (SETTINGS_PIN: "YOUR_PRIVATE_PIN") Tj ET
+BT /F3 7.5 Tf 52 628.89 Td 0.090 0.208 0.169 rg (IOT_ACCESS_MODE: routed) Tj ET
+BT /F3 7.5 Tf 52 618.89 Td 0.090 0.208 0.169 rg (IOT_SUBNET_CIDR: 192.168.30.0/24) Tj ET
+BT /F3 7.5 Tf 52 608.89 Td 0.090 0.208 0.169 rg (IOT_SUBNET_NOTES: "TrueNAS/app may initiate restricted connections to IoT devices;) Tj ET
+BT /F3 7.5 Tf 52 598.89 Td 0.090 0.208 0.169 rg (IoT devices should not initiate LAN access.") Tj ET
+BT /F3 7.5 Tf 52 588.89 Td 0.090 0.208 0.169 rg (MQTT_HOST: mqtt) Tj ET
+BT /F3 7.5 Tf 52 578.89 Td 0.090 0.208 0.169 rg (MQTT_PORT: 1883) Tj ET
+BT /F3 7.5 Tf 52 568.89 Td 0.090 0.208 0.169 rg (MQTT_USERNAME: "") Tj ET
+BT /F3 7.5 Tf 52 558.89 Td 0.090 0.208 0.169 rg (MQTT_PASSWORD: "") Tj ET
+BT /F3 7.5 Tf 52 548.89 Td 0.090 0.208 0.169 rg (MQTT_USE_TLS: "false") Tj ET
+BT /F3 7.5 Tf 52 538.89 Td 0.090 0.208 0.169 rg (NEXT_PUBLIC_APP_URL: http://TRUENAS_IP:3000) Tj ET
+BT /F3 7.5 Tf 52 528.89 Td 0.090 0.208 0.169 rg (ports:) Tj ET
+BT /F3 7.5 Tf 52 518.89 Td 0.090 0.208 0.169 rg (- "3000:3000") Tj ET
+BT /F3 7.5 Tf 52 508.89 Td 0.090 0.208 0.169 rg (volumes:) Tj ET
+BT /F3 7.5 Tf 52 498.89 Td 0.090 0.208 0.169 rg (- /mnt/YOUR_POOL/apps/iot-dashboard/data:/data) Tj ET
+BT /F3 7.5 Tf 52 488.89 Td 0.090 0.208 0.169 rg (restart: unless-stopped) Tj ET
+BT /F3 7.5 Tf 52 478.89 Td 0.090 0.208 0.169 rg (depends_on:) Tj ET
+BT /F3 7.5 Tf 52 468.89 Td 0.090 0.208 0.169 rg (mqtt:) Tj ET
+BT /F3 7.5 Tf 52 458.89 Td 0.090 0.208 0.169 rg (condition: service_healthy) Tj ET
+BT /F3 7.5 Tf 52 448.89 Td 0.090 0.208 0.169 rg (healthcheck:) Tj ET
+BT /F3 7.5 Tf 52 438.89 Td 0.090 0.208 0.169 rg (test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1 ||) Tj ET
+BT /F3 7.5 Tf 52 428.89 Td 0.090 0.208 0.169 rg (exit 1"]) Tj ET
+BT /F3 7.5 Tf 52 418.89 Td 0.090 0.208 0.169 rg (interval: 30s) Tj ET
+BT /F3 7.5 Tf 52 408.89 Td 0.090 0.208 0.169 rg (timeout: 5s) Tj ET
+BT /F3 7.5 Tf 52 398.89 Td 0.090 0.208 0.169 rg (retries: 5) Tj ET
+BT /F3 7.5 Tf 52 388.89 Td 0.090 0.208 0.169 rg (start_period: 20s) Tj ET
+BT /F3 7.5 Tf 52 378.89 Td 0.090 0.208 0.169 rg (mqtt:) Tj ET
+BT /F3 7.5 Tf 52 368.89 Td 0.090 0.208 0.169 rg (image: eclipse-mosquitto:2) Tj ET
+BT /F3 7.5 Tf 52 358.89 Td 0.090 0.208 0.169 rg (container_name: iot-dashboard-mqtt) Tj ET
+BT /F3 7.5 Tf 52 348.89 Td 0.090 0.208 0.169 rg (ports:) Tj ET
+BT /F3 7.5 Tf 52 338.89 Td 0.090 0.208 0.169 rg (- "1883:1883") Tj ET
+BT /F3 7.5 Tf 52 328.89 Td 0.090 0.208 0.169 rg (volumes:) Tj ET
+BT /F3 7.5 Tf 52 318.89 Td 0.090 0.208 0.169 rg (- /mnt/YOUR_POOL/apps/iot-dashboard/mosquitto-config:/mosquitto/config) Tj ET
+BT /F3 7.5 Tf 52 308.89 Td 0.090 0.208 0.169 rg (- /mnt/YOUR_POOL/apps/iot-dashboard/mosquitto-data:/mosquitto/data) Tj ET
+BT /F3 7.5 Tf 52 298.89 Td 0.090 0.208 0.169 rg (- /mnt/YOUR_POOL/apps/iot-dashboard/mosquitto-log:/mosquitto/log) Tj ET
+BT /F3 7.5 Tf 52 288.89 Td 0.090 0.208 0.169 rg (restart: unless-stopped) Tj ET
+BT /F3 7.5 Tf 52 278.89 Td 0.090 0.208 0.169 rg (healthcheck:) Tj ET
+BT /F3 7.5 Tf 52 268.89 Td 0.090 0.208 0.169 rg (test: ["CMD-SHELL", "nc -z 127.0.0.1 1883"]) Tj ET
+BT /F3 7.5 Tf 52 258.89 Td 0.090 0.208 0.169 rg (interval: 30s) Tj ET
+BT /F3 7.5 Tf 52 248.89 Td 0.090 0.208 0.169 rg (timeout: 5s) Tj ET
+BT /F3 7.5 Tf 52 238.89 Td 0.090 0.208 0.169 rg (retries: 5) Tj ET
+BT /F3 7.5 Tf 52 228.89 Td 0.090 0.208 0.169 rg (start_period: 5s) Tj ET
+BT /F2 15 Tf 48 205.89 Td 0.059 0.318 0.196 rg (5. Ports and network access) Tj ET
+BT /F1 10 Tf 48 183.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 183.89 Td 0.122 0.176 0.165 rg (IoT Dashboard: 3000/TCP, exposed only to trusted LAN clients.) Tj ET
+BT /F1 10 Tf 48 168.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 168.89 Td 0.122 0.176 0.165 rg (Mosquitto MQTT: 1883/TCP, exposed only to trusted LAN/app/MQTT devices.) Tj ET
+BT /F1 10 Tf 48 153.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 153.89 Td 0.122 0.176 0.165 rg (Dashboard URL: http://TRUENAS_IP:3000.) Tj ET
+BT /F1 10 Tf 48 138.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 138.89 Td 0.122 0.176 0.165 rg (Allow TrueNAS/App to initiate traffic to 192.168.30.0/24.) Tj ET
+BT /F1 10 Tf 48 123.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 123.89 Td 0.122 0.176 0.165 rg (Block IoT subnet initiated access to the main LAN except established replies.) Tj ET
+0.933 0.973 0.949 rg 44 75.89 507.28 34.00 re f
+0.737 0.847 0.765 RG 44 75.89 507.28 34.00 re S
+BT /F3 7.5 Tf 52 93.89 Td 0.090 0.208 0.169 rg (Allow: TrueNAS/App -> 192.168.30.0/24) Tj ET
+BT /F3 7.5 Tf 52 83.89 Td 0.090 0.208 0.169 rg (Block: IoT subnet -> main LAN, except established replies) Tj ET
+BT /F1 8 Tf 48 28 Td 0.322 0.439 0.392 rg (IoT Dashboard TrueNAS SCALE Install Guide) Tj ET
+BT /F1 8 Tf 507.28 28 Td 0.322 0.439 0.392 rg (Page 2) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 12 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 5278 >>
+stream
+BT /F2 15 Tf 48 787.89 Td 0.059 0.318 0.196 rg (6. Start and verify the app) Tj ET
+BT /F1 10 Tf 48 765.89 Td 0.122 0.176 0.165 rg (After saving the Custom App YAML, deploy/start the app from TrueNAS. Watch the logs for both) Tj ET
+BT /F1 10 Tf 48 751.89 Td 0.122 0.176 0.165 rg (containers: iot-dashboard and iot-dashboard-mqtt.) Tj ET
+BT /F1 10 Tf 48 732.89 Td 0.122 0.176 0.165 rg (On first start, the dashboard automatically creates the SQLite database and schema here:) Tj ET
+0.933 0.973 0.949 rg 44 695.89 507.28 24.00 re f
+0.737 0.847 0.765 RG 44 695.89 507.28 24.00 re S
+BT /F3 7.5 Tf 52 703.89 Td 0.090 0.208 0.169 rg (/mnt/YOUR_POOL/apps/iot-dashboard/data/iot-dashboard.sqlite) Tj ET
+BT /F1 10 Tf 48 686.89 Td 0.122 0.176 0.165 rg (Open a browser from a trusted client device:) Tj ET
+0.933 0.973 0.949 rg 44 649.89 507.28 24.00 re f
+0.737 0.847 0.765 RG 44 649.89 507.28 24.00 re S
+BT /F3 7.5 Tf 52 657.89 Td 0.090 0.208 0.169 rg (http://TRUENAS_IP:3000) Tj ET
+BT /F1 10 Tf 48 640.89 Td 0.122 0.176 0.165 rg (Useful pages:) Tj ET
+0.933 0.973 0.949 rg 44 573.89 507.28 54.00 re f
+0.737 0.847 0.765 RG 44 573.89 507.28 54.00 re S
+BT /F3 7.5 Tf 52 611.89 Td 0.090 0.208 0.169 rg (http://TRUENAS_IP:3000) Tj ET
+BT /F3 7.5 Tf 52 601.89 Td 0.090 0.208 0.169 rg (http://TRUENAS_IP:3000/devices) Tj ET
+BT /F3 7.5 Tf 52 591.89 Td 0.090 0.208 0.169 rg (http://TRUENAS_IP:3000/settings) Tj ET
+BT /F3 7.5 Tf 52 581.89 Td 0.090 0.208 0.169 rg (http://TRUENAS_IP:3000/display) Tj ET
+BT /F2 15 Tf 48 558.89 Td 0.059 0.318 0.196 rg (7. Unlock and configure Settings) Tj ET
+BT /F1 10 Tf 48 536.89 Td 0.122 0.176 0.165 rg (Open Settings and enter the PIN:) Tj ET
+0.933 0.973 0.949 rg 44 489.89 507.28 34.00 re f
+0.737 0.847 0.765 RG 44 489.89 507.28 34.00 re S
+BT /F3 7.5 Tf 52 507.89 Td 0.090 0.208 0.169 rg (http://TRUENAS_IP:3000/settings) Tj ET
+BT /F3 7.5 Tf 52 497.89 Td 0.090 0.208 0.169 rg (PIN: YOUR_PRIVATE_PIN) Tj ET
+BT /F1 10 Tf 48 480.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 480.89 Td 0.122 0.176 0.165 rg (Network & IoT access: Access mode routed; IoT subnet 192.168.30.0/24; gateway note) Tj ET
+BT /F1 9.5 Tf 62 467.89 Td 0.122 0.176 0.165 rg (192.168.30.1.) Tj ET
+BT /F1 10 Tf 48 452.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 452.89 Td 0.122 0.176 0.165 rg (MQTT broker: Host mqtt; Port 1883; TLS false; username/password blank for current local) Tj ET
+BT /F1 9.5 Tf 62 439.89 Td 0.122 0.176 0.165 rg (Mosquitto config.) Tj ET
+BT /F1 10 Tf 48 424.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 424.89 Td 0.122 0.176 0.165 rg (Discovery: Start with mock mode. Switch to live only after dashboard and network access) Tj ET
+BT /F1 9.5 Tf 62 411.89 Td 0.122 0.176 0.165 rg (are confirmed.) Tj ET
+BT /F1 10 Tf 48 396.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 396.89 Td 0.122 0.176 0.165 rg (Control safety: Keep risky controls disabled until each integration is confirmed safe.) Tj ET
+BT /F2 15 Tf 48 370.89 Td 0.059 0.318 0.196 rg (8. Run diagnostics) Tj ET
+BT /F1 10 Tf 48 348.89 Td 0.122 0.176 0.165 rg (From Settings, run the available diagnostics in this order:) Tj ET
+0.933 0.973 0.949 rg 44 291.89 507.28 44.00 re f
+0.737 0.847 0.765 RG 44 291.89 507.28 44.00 re S
+BT /F3 7.5 Tf 52 319.89 Td 0.090 0.208 0.169 rg (1. Test MQTT) Tj ET
+BT /F3 7.5 Tf 52 309.89 Td 0.090 0.208 0.169 rg (2. Check IoT Gateway) Tj ET
+BT /F3 7.5 Tf 52 299.89 Td 0.090 0.208 0.169 rg (3. Sample MQTT Topic) Tj ET
+BT /F1 10 Tf 48 282.89 Td 0.122 0.176 0.165 rg (Expected results: MQTT should connect when the Mosquitto container is running. Gateway check) Tj ET
+BT /F1 10 Tf 48 268.89 Td 0.122 0.176 0.165 rg (should succeed when TrueNAS can reach 192.168.30.1. MQTT sample may return no message unless) Tj ET
+BT /F1 10 Tf 48 254.89 Td 0.122 0.176 0.165 rg (a device is actively publishing to the configured sample topic.) Tj ET
+BT /F2 15 Tf 48 229.89 Td 0.059 0.318 0.196 rg (9. Scan for devices safely) Tj ET
+BT /F1 10 Tf 48 207.89 Td 0.122 0.176 0.165 rg (Open Devices > Discovery. For the first pass, keep Discovery Mode set to mock and run) Tj ET
+BT /F1 10 Tf 48 193.89 Td 0.122 0.176 0.165 rg (discovery to confirm the UI workflow. Then return to Settings, switch Discovery Mode to) Tj ET
+BT /F1 10 Tf 48 179.89 Td 0.122 0.176 0.165 rg (live, and run discovery again.) Tj ET
+BT /F1 10 Tf 48 160.89 Td 0.122 0.176 0.165 rg (The live scanner is intentionally cautious. It scans a limited range and probes common ports) Tj ET
+BT /F1 10 Tf 48 146.89 Td 0.122 0.176 0.165 rg (only, including 80, 443, 1883, 502, 8081, and 6668. This avoids aggressive scanning on a) Tj ET
+BT /F1 10 Tf 48 132.89 Td 0.122 0.176 0.165 rg (test deployment.) Tj ET
+1.000 0.973 0.882 rg 44 66.89 507.28 53.00 re f
+1.000 0.890 0.639 RG 44 66.89 507.28 53.00 re S
+BT /F1 9 Tf 52 103.89 Td 0.361 0.231 0.000 rg (After discovery, review each device, confirm the likely type, then approve it into the) Tj ET
+BT /F1 9 Tf 52 90.89 Td 0.361 0.231 0.000 rg (dashboard. Do not mark a device as controllable unless the integration and risk level) Tj ET
+BT /F1 9 Tf 52 77.89 Td 0.361 0.231 0.000 rg (are understood.) Tj ET
+BT /F1 8 Tf 48 28 Td 0.322 0.439 0.392 rg (IoT Dashboard TrueNAS SCALE Install Guide) Tj ET
+BT /F1 8 Tf 507.28 28 Td 0.322 0.439 0.392 rg (Page 3) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 12 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 3756 >>
+stream
+BT /F2 15 Tf 48 787.89 Td 0.059 0.318 0.196 rg (10. Add known Wi-Fi devices manually) Tj ET
+BT /F1 10 Tf 48 765.89 Td 0.122 0.176 0.165 rg (Some Wi-Fi devices will not identify reliably through network scanning. For those, use) Tj ET
+BT /F1 10 Tf 48 751.89 Td 0.122 0.176 0.165 rg (Devices > Add known Wi-Fi device. Enter the name, IP address, room, category, integration,) Tj ET
+BT /F1 10 Tf 48 737.89 Td 0.122 0.176 0.165 rg (risk level, and any MQTT topics or notes. DHCP reservations are recommended for important) Tj ET
+BT /F1 10 Tf 48 723.89 Td 0.122 0.176 0.165 rg (devices.) Tj ET
+BT /F2 15 Tf 48 698.89 Td 0.059 0.318 0.196 rg (11. Recommended production hardening) Tj ET
+BT /F1 10 Tf 48 676.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 676.89 Td 0.122 0.176 0.165 rg (Change SETTINGS_PIN from YOUR_PRIVATE_PIN before wider use.) Tj ET
+BT /F1 10 Tf 48 661.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 661.89 Td 0.122 0.176 0.165 rg (Add Mosquitto username/password and update app MQTT settings.) Tj ET
+BT /F1 10 Tf 48 646.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 646.89 Td 0.122 0.176 0.165 rg (Expose ports 3000 and 1883 only to trusted local networks.) Tj ET
+BT /F1 10 Tf 48 631.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 631.89 Td 0.122 0.176 0.165 rg (Back up /mnt/YOUR_POOL/apps/iot-dashboard/data regularly.) Tj ET
+BT /F1 10 Tf 48 616.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 616.89 Td 0.122 0.176 0.165 rg (Do not expose directly to the internet without proper reverse proxy, TLS,) Tj ET
+BT /F1 9.5 Tf 62 603.89 Td 0.122 0.176 0.165 rg (authentication, and firewall rules.) Tj ET
+BT /F2 15 Tf 48 577.89 Td 0.059 0.318 0.196 rg (12. Troubleshooting quick checks) Tj ET
+BT /F1 10 Tf 48 555.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 555.89 Td 0.122 0.176 0.165 rg (Dashboard does not load: confirm app container is running and port 3000 is not already) Tj ET
+BT /F1 9.5 Tf 62 542.89 Td 0.122 0.176 0.165 rg (used.) Tj ET
+BT /F1 10 Tf 48 527.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 527.89 Td 0.122 0.176 0.165 rg (Settings or Devices errors: confirm /data volume is writable and SQLite file was) Tj ET
+BT /F1 9.5 Tf 62 514.89 Td 0.122 0.176 0.165 rg (created.) Tj ET
+BT /F1 10 Tf 48 499.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 499.89 Td 0.122 0.176 0.165 rg (MQTT test fails: confirm mqtt container is healthy and mosquitto.conf exists in the) Tj ET
+BT /F1 9.5 Tf 62 486.89 Td 0.122 0.176 0.165 rg (mounted config dataset.) Tj ET
+BT /F1 10 Tf 48 471.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 471.89 Td 0.122 0.176 0.165 rg (Gateway check fails: confirm TrueNAS routing/firewall allows traffic to 192.168.30.1.) Tj ET
+BT /F1 10 Tf 48 456.89 Td 0.059 0.318 0.196 rg (") Tj ET
+BT /F1 9.5 Tf 62 456.89 Td 0.122 0.176 0.165 rg (No devices found: start with manual known devices, confirm live discovery mode, and) Tj ET
+BT /F1 9.5 Tf 62 443.89 Td 0.122 0.176 0.165 rg (verify IoT subnet routing.) Tj ET
+BT /F2 15 Tf 48 417.89 Td 0.059 0.318 0.196 rg (End state) Tj ET
+BT /F1 10 Tf 48 395.89 Td 0.122 0.176 0.165 rg (When complete, the IoT Dashboard should run as a persistent TrueNAS SCALE Custom App with) Tj ET
+BT /F1 10 Tf 48 381.89 Td 0.122 0.176 0.165 rg (SQLite storage under the app dataset, a local Mosquitto broker, PIN-protected Settings,) Tj ET
+BT /F1 10 Tf 48 367.89 Td 0.122 0.176 0.165 rg (responsive web access from LAN clients, and safe guided onboarding for known and discovered) Tj ET
+BT /F1 10 Tf 48 353.89 Td 0.122 0.176 0.165 rg (IoT devices.) Tj ET
+BT /F1 8 Tf 48 28 Td 0.322 0.439 0.392 rg (IoT Dashboard TrueNAS SCALE Install Guide) Tj ET
+BT /F1 8 Tf 507.28 28 Td 0.322 0.439 0.392 rg (Page 4) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 12 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R] /Count 4 >>
+endobj
+13 0 obj
+<< /Type /Catalog /Pages 12 0 R >>
+endobj
+xref
+0 14
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000000154 00000 n 
+0000000222 00000 n 
+0000005874 00000 n 
+0000006027 00000 n 
+0000012095 00000 n 
+0000012248 00000 n 
+0000017578 00000 n 
+0000017731 00000 n 
+0000021540 00000 n 
+0000021695 00000 n 
+0000021772 00000 n 
+trailer
+<< /Size 14 /Root 13 0 R >>
+startxref
+21823
+%%EOF

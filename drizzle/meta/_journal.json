@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1778501560253,
+      "tag": "0000_careless_captain_stacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1778513337940,
+      "tag": "0001_complex_rawhide_kid",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1778515760492,
+      "tag": "0002_plain_rumiko_fujikawa",
+      "breakpoints": true
+    }
+  ]
+}

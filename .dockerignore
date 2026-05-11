@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+data
+*.sqlite
+npm-debug.log
+README.md
+PROJECT.md
+IMPLEMENTATION_PLAN.md
