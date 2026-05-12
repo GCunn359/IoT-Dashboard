@@ -51,7 +51,7 @@ export const settingSections: Array<{
     description:
       "Connection status for vendor or bridge integrations. Credentials should be added only when the integration path is confirmed.",
     id: "integrations",
-    title: "Integrations",
+    title: "Integrations & bridges",
   },
   {
     description:
@@ -155,6 +155,34 @@ export const settingDefinitions: SettingDefinition[] = [
     key: "mqttSampleTopic",
     label: "Sample topic filter",
     section: "mqtt",
+    type: "text",
+  },
+  {
+    description: "Local Home Assistant base URL, for example http://192.168.1.50:8123.",
+    key: "homeAssistantUrl",
+    label: "Home Assistant URL",
+    section: "integrations",
+    type: "text",
+  },
+  {
+    description: "Long-lived access token from Home Assistant. Leave blank to keep the existing token.",
+    key: "homeAssistantToken",
+    label: "Home Assistant token",
+    section: "integrations",
+    type: "password",
+  },
+  {
+    description: "Comma-separated entity domains to import, for example climate,sensor,binary_sensor,switch,light.",
+    key: "homeAssistantDomains",
+    label: "HA entity domains",
+    section: "integrations",
+    type: "text",
+  },
+  {
+    description: "Optional text filter for entity IDs or friendly names. Leave blank to import all selected domains.",
+    key: "homeAssistantEntityFilter",
+    label: "HA entity filter",
+    section: "integrations",
     type: "text",
   },
   {
@@ -308,6 +336,10 @@ function getDefaultSettings(): SettingsMap {
     discoveryMode: "mock",
     esolarStatus: "ready",
     firewallNotes: config.iotSubnetNotes,
+    homeAssistantDomains: "climate,sensor,binary_sensor,switch,light",
+    homeAssistantEntityFilter: "",
+    homeAssistantToken: "",
+    homeAssistantUrl: "",
     iotAccessMode: config.iotAccessMode,
     iotGatewayIp: "192.168.30.1",
     iotSubnetCidr: config.iotSubnetCidr,

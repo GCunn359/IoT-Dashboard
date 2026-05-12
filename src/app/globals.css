@@ -2268,6 +2268,23 @@ svg .immersion-element.on {
   gap: 0.65rem;
 }
 
+.ha-entity-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.ha-entity-preview span {
+  background: #f0fdf4;
+  border: 1px solid rgba(101, 163, 13, 0.16);
+  border-radius: 999px;
+  color: #2f7d16;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0.45rem 0.7rem;
+}
+
 .saved-device-row {
   align-items: center;
   background: #f8fafc;

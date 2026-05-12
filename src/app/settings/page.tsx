@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import net from "node:net";
 
 import { AppShell } from "@/components/AppShell";
+import { testHomeAssistantConnection } from "@/lib/home-assistant";
 import { sampleMqttTopic } from "@/lib/mqtt";
 import {
   getSettings,
@@ -121,6 +122,32 @@ export default async function SettingsPage() {
     revalidatePath("/settings");
   }
 
+  async function checkHomeAssistantConnection() {
+    "use server";
+
+    const currentSettings = await getSettings();
+    const checkedAt = new Date().toLocaleString("en-IE");
+
+    try {
+      const message = await testHomeAssistantConnection(currentSettings);
+      await setSettingValue({
+        key: "diagnosticHomeAssistant",
+        label: "Home Assistant diagnostic",
+        section: "diagnostics",
+        value: `${checkedAt}: OK - ${message}`,
+      });
+    } catch (error) {
+      await setSettingValue({
+        key: "diagnosticHomeAssistant",
+        label: "Home Assistant diagnostic",
+        section: "diagnostics",
+        value: `${checkedAt}: Failed - ${error instanceof Error ? error.message : "Unknown error"}`,
+      });
+    }
+
+    revalidatePath("/settings");
+  }
+
   return (
     <AppShell
       description="Admin configuration for networking, discovery, integrations, control safety, and local data."
@@ -194,6 +221,13 @@ export default async function SettingsPage() {
               <span>Last settings save</span>
               <strong>{settings.diagnosticSettingsSave ?? "No save yet"}</strong>
             </div>
+            <form action={checkHomeAssistantConnection} className="diagnostic-card">
+              <span>Home Assistant</span>
+              <strong>{settings.diagnosticHomeAssistant ?? "Not checked yet"}</strong>
+              <button className="primary-button compact" type="submit">
+                Test HA
+              </button>
+            </form>
           </div>
         </article>
 

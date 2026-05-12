@@ -11,6 +11,10 @@ import {
   getDiscoveredDevices,
   runDiscoveryScan,
 } from "@/lib/discovery";
+import {
+  fetchHomeAssistantEntities,
+  importHomeAssistantEntities,
+} from "@/lib/home-assistant";
 import { getSettings } from "@/lib/settings";
 import {
   addManualDevice,
@@ -31,6 +35,9 @@ export default async function DevicesPage() {
   const discoveredDevices = (await getDiscoveredDevices()).filter(
     (device) => device.source === (settings.discoveryMode === "live" ? "live" : "mock"),
   );
+  const homeAssistantEntities = settings.homeAssistantUrl && settings.homeAssistantToken
+    ? await fetchHomeAssistantEntities(settings).catch(() => [])
+    : [];
   const cards = getDeviceSummaryCards(devices);
 
   async function addDevice(formData: FormData) {
@@ -88,6 +95,16 @@ export default async function DevicesPage() {
       revalidatePath("/", "layout");
       revalidatePath("/devices");
     }
+  }
+
+  async function syncHomeAssistantEntities() {
+    "use server";
+
+    const currentSettings = await getSettings();
+    await importHomeAssistantEntities(currentSettings);
+    revalidatePath("/", "layout");
+    revalidatePath("/devices");
+    revalidatePath("/settings");
   }
 
   return (
@@ -255,6 +272,37 @@ export default async function DevicesPage() {
                 Add device
               </button>
             </form>
+          </article>
+          <article className="panel ha-bridge-panel">
+            <div className="section-heading">
+              <p>Home Assistant bridge</p>
+              <h2>Import local HA entities</h2>
+              <p>
+                Configure the HA URL/token in Settings, then import matching HA
+                entities as dashboard devices. Matched entities:{" "}
+                <strong>{homeAssistantEntities.length}</strong>
+              </p>
+            </div>
+            <form action={syncHomeAssistantEntities}>
+              <PendingSubmitButton
+                label="Sync Home Assistant entities"
+                pendingLabel="Importing HA entities..."
+              />
+            </form>
+            {homeAssistantEntities.length > 0 ? (
+              <div className="ha-entity-preview">
+                {homeAssistantEntities.slice(0, 12).map((entity) => (
+                  <span key={entity.entity_id}>
+                    {entity.entity_id} · {entity.state}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="discovery-empty">
+                No HA entities matched yet. Add the local HA URL and long-lived
+                token in Settings, then test the HA connection.
+              </div>
+            )}
           </article>
           <article className="panel device-management-panel">
             <div className="section-heading">
