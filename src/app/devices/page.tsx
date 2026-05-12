@@ -14,6 +14,7 @@ import {
 import { getSettings } from "@/lib/settings";
 import {
   addManualDevice,
+  deletePersistedDevice,
   deviceCategories,
   deviceStatuses,
   getDeviceSummaryCards,
@@ -75,6 +76,18 @@ export default async function DevicesPage() {
     await clearMockDiscoveredDevices();
     revalidatePath("/devices");
     revalidatePath("/settings");
+  }
+
+  async function deleteDevice(formData: FormData) {
+    "use server";
+
+    const id = String(formData.get("id") ?? "");
+
+    if (id) {
+      await deletePersistedDevice(id);
+      revalidatePath("/", "layout");
+      revalidatePath("/devices");
+    }
   }
 
   return (
@@ -242,6 +255,35 @@ export default async function DevicesPage() {
                 Add device
               </button>
             </form>
+          </article>
+          <article className="panel device-management-panel">
+            <div className="section-heading">
+              <p>Inventory</p>
+              <h2>Saved dashboard devices</h2>
+              <p>
+                Remove stale mock, test, or unwanted devices from the persistent
+                SQLite inventory. Discovery results can be deleted separately
+                above.
+              </p>
+            </div>
+            <div className="saved-device-list">
+              {devices.map((device) => (
+                <article className="saved-device-row" key={device.id}>
+                  <div>
+                    <strong>{device.name}</strong>
+                    <span>
+                      {device.room} · {device.integration} · {device.category}
+                    </span>
+                  </div>
+                  <form action={deleteDevice}>
+                    <input name="id" type="hidden" value={device.id} />
+                    <button className="primary-button compact danger" type="submit">
+                      Delete device
+                    </button>
+                  </form>
+                </article>
+              ))}
+            </div>
           </article>
           <DeviceGrid devices={devices} />
         </section>

@@ -466,6 +466,14 @@ export async function updateDevice(id: string, input: EditableDeviceInput) {
     .where(eq(latestStates.deviceId, id));
 }
 
+export async function deletePersistedDevice(id: string) {
+  await ensureDeviceTables();
+
+  const db = createDb();
+  await db.delete(latestStates).where(eq(latestStates.deviceId, id));
+  await db.delete(deviceTable).where(eq(deviceTable.id, id));
+}
+
 export function parseEditableDeviceForm(formData: FormData): EditableDeviceInput {
   const base = parseManualDeviceForm(formData);
 

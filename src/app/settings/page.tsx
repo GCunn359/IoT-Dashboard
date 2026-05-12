@@ -52,6 +52,7 @@ export default async function SettingsPage() {
           : ""
       }.`,
     });
+    revalidatePath("/", "layout");
     revalidatePath("/settings");
     revalidatePath("/devices");
   }

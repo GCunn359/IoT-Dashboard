@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { eq, sql } from "drizzle-orm";
 
 import { createDb } from "@/db/client";
@@ -352,6 +353,7 @@ async function ensureSettingsTable() {
 }
 
 export async function getSettings() {
+  noStore();
   await ensureSettingsTable();
 
   const db = createDb();
