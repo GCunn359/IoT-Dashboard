@@ -28,6 +28,18 @@ type DiscoveredDevice = {
   vendor: string | null;
 };
 
+type LiveScanResult = {
+  devices: DiscoveredDevice[];
+  summary: {
+    addressesScanned: number;
+    pingErrors: string[];
+    pingReachable: number;
+    portReachable: number;
+    ports: number[];
+    timeoutMs: number;
+  };
+};
+
 const mockDiscoveredDevices: Array<Omit<DiscoveredDevice, "discoveredAt" | "status">> = [
   {
     confidence: 88,
@@ -192,9 +204,10 @@ async function pingHost(host: string, timeoutMs: number) {
 
   try {
     await execFileAsync("ping", args, { timeout: timeoutMs + 750 });
-    return true;
-  } catch {
-    return false;
+    return { error: null, ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown ping error";
+    return { error: message, ok: false };
   }
 }
 
@@ -210,7 +223,7 @@ function getIpRange(startIp: string, endIp: string) {
   });
 }
 
-async function runLiveScan() {
+async function runLiveScan(): Promise<LiveScanResult> {
   const settings = await getSettings();
   const ports = parseScanPorts(settings.scanPorts);
   const timeoutMs = parsePositiveInteger(settings.scanTimeoutMs, 1200, 10000);
@@ -218,6 +231,9 @@ async function runLiveScan() {
   const pingEnabled = settings.scanPingEnabled === "true";
   const addresses = getIpRange(settings.scanStartIp, settings.scanEndIp).slice(0, addressLimit);
   const found: DiscoveredDevice[] = [];
+  const pingErrors = new Set<string>();
+  let pingReachable = 0;
+  let portReachable = 0;
 
   async function scanAddress(ipAddress: string): Promise<DiscoveredDevice | null> {
     const openPorts = (
@@ -230,9 +246,23 @@ async function runLiveScan() {
     )
       .filter((result) => result.open)
       .map((result) => result.port);
-    const reachable = openPorts.length > 0 || (pingEnabled && (await pingHost(ipAddress, timeoutMs)));
+    const pingResult = openPorts.length === 0 && pingEnabled
+      ? await pingHost(ipAddress, timeoutMs)
+      : { error: null, ok: false };
+
+    if (pingResult.error) {
+      pingErrors.add(pingResult.error);
+    }
+
+    const reachable = openPorts.length > 0 || pingResult.ok;
 
     if (reachable) {
+      if (openPorts.length > 0) {
+        portReachable += 1;
+      } else {
+        pingReachable += 1;
+      }
+
       return {
         confidence: openPorts.length > 0 ? Math.min(95, 45 + openPorts.length * 12) : 40,
         discoveredAt: new Date(),
@@ -257,7 +287,17 @@ async function runLiveScan() {
     found.push(...results.filter((device): device is DiscoveredDevice => Boolean(device)));
   }
 
-  return found;
+  return {
+    devices: found,
+    summary: {
+      addressesScanned: addresses.length,
+      pingErrors: Array.from(pingErrors).slice(0, 3),
+      pingReachable,
+      portReachable,
+      ports,
+      timeoutMs,
+    },
+  };
 }
 
 async function persistDiscoveryResults(results: DiscoveredDevice[]) {
@@ -298,21 +338,28 @@ export async function runDiscoveryScan() {
   const settings = await getSettings();
   const mode = settings.discoveryMode === "live" ? "live" : "mock";
   const now = new Date();
+  const liveScan = mode === "live" ? await runLiveScan() : null;
   const results =
-    mode === "live"
-      ? await runLiveScan()
-      : mockDiscoveredDevices.map((device) => ({
-          ...device,
-          discoveredAt: now,
-          status: "new" as const,
+    liveScan?.devices ??
+    mockDiscoveredDevices.map((device) => ({
+           ...device,
+           discoveredAt: now,
+           status: "new" as const,
         }));
+  const liveSummary = liveScan
+    ? ` Scanned ${liveScan.summary.addressesScanned} address${liveScan.summary.addressesScanned === 1 ? "" : "es"}; ${liveScan.summary.portReachable} with open TCP ports; ${liveScan.summary.pingReachable} ping-only reachable. ${
+        liveScan.summary.pingErrors.length > 0
+          ? `Ping probe errors: ${liveScan.summary.pingErrors.join(" | ")}.`
+          : ""
+      }`
+    : "";
 
   await persistDiscoveryResults(results);
   await setSettingValue({
     key: "diagnosticDiscoveryScan",
     label: "Discovery scan",
     section: "diagnostics",
-    value: `${new Date().toLocaleString("en-IE")}: ${mode === "live" ? "Live" : "Mock"} scan completed. ${results.length} device${results.length === 1 ? "" : "s"} found across ${mode === "live" ? `${settings.scanStartIp}-${settings.scanEndIp} using ports ${settings.scanPorts}, ${settings.scanTimeoutMs}ms timeout, ping ${settings.scanPingEnabled === "true" ? "on" : "off"}` : "mock fixtures"}.`,
+    value: `${new Date().toLocaleString("en-IE")}: ${mode === "live" ? "Live" : "Mock"} scan completed. ${results.length} device${results.length === 1 ? "" : "s"} found across ${mode === "live" ? `${settings.scanStartIp}-${settings.scanEndIp} using ports ${settings.scanPorts}, ${settings.scanTimeoutMs}ms timeout, ping ${settings.scanPingEnabled === "true" ? "on" : "off"}. ${liveSummary}` : "mock fixtures"}.`,
   });
 
   return {
