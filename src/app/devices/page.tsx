@@ -8,6 +8,7 @@ import {
   getDiscoveredDevices,
   runDiscoveryScan,
 } from "@/lib/discovery";
+import { getSettings } from "@/lib/settings";
 import {
   addManualDevice,
   deviceCategories,
@@ -23,6 +24,7 @@ export const dynamic = "force-dynamic";
 export default async function DevicesPage() {
   const devices = await getPersistedDevices();
   const discoveredDevices = await getDiscoveredDevices();
+  const settings = await getSettings();
   const cards = getDeviceSummaryCards(devices);
 
   async function addDevice(formData: FormData) {
@@ -66,9 +68,9 @@ export default async function DevicesPage() {
               <p>Discovery</p>
               <h2>Find existing IoT Wi-Fi devices</h2>
               <p>
-                This test server uses mock discovery by default. Switch Settings
-                to live discovery only on the TrueNAS host that can reach the IoT
-                subnet.
+                Current mode: <strong>{settings.discoveryMode === "live" ? "Live network scan" : "Mock/test scan"}</strong>.
+                Live discovery should only run on the TrueNAS host that can reach
+                the IoT subnet.
               </p>
             </div>
             <form action={scanForDevices}>

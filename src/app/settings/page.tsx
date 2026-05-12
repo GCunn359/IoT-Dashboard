@@ -25,6 +25,7 @@ export default async function SettingsPage() {
 
     const currentSettings = await getSettings();
     const nextSettings: SettingsMap = {};
+    const savedSection = String(formData.get("__section") ?? "settings");
 
     for (const definition of settingDefinitions) {
       const values = formData.getAll(definition.key);
@@ -41,7 +42,18 @@ export default async function SettingsPage() {
     }
 
     await updateSettings(nextSettings);
+    await setSettingValue({
+      key: "diagnosticSettingsSave",
+      label: "Settings save",
+      section: "diagnostics",
+      value: `${new Date().toLocaleString("en-IE")}: Saved ${savedSection} section${
+        savedSection === "discovery" && nextSettings.discoveryMode
+          ? ` - discovery mode is ${nextSettings.discoveryMode}`
+          : ""
+      }.`,
+    });
     revalidatePath("/settings");
+    revalidatePath("/devices");
   }
 
   async function checkMqttConnection() {
@@ -177,6 +189,10 @@ export default async function SettingsPage() {
                 Check gateway
               </button>
             </form>
+            <div className="diagnostic-card">
+              <span>Last settings save</span>
+              <strong>{settings.diagnosticSettingsSave ?? "No save yet"}</strong>
+            </div>
           </div>
         </article>
 
@@ -208,6 +224,7 @@ function SettingsSection({
 
   return (
     <form action={action} className={`settings-section ${section.id}`}>
+      <input name="__section" type="hidden" value={section.id} />
       <div className="settings-section-heading">
         <div>
           <p>{section.id}</p>
@@ -304,9 +321,9 @@ function getStatusCards(settings: SettingsMap) {
       value: `${settings.mqttHost}:${settings.mqttPort}`,
     },
     {
-      detail: `${settings.scanStartIp} → ${settings.scanEndIp}`,
+      detail: `${settings.discoveryEnabled === "true" ? "Enabled" : "Disabled"} · ${settings.scanStartIp} → ${settings.scanEndIp}`,
       label: "Discovery range",
-      value: settings.discoveryEnabled === "true" ? "Enabled" : "Disabled",
+      value: settings.discoveryMode === "live" ? "Live scan" : "Mock scan",
     },
     {
       detail: settings.securityControlsEnabled === "true"
