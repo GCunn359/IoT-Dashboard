@@ -1,5 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import net from "node:net";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
 import { createDb } from "@/db/client";
 import {
@@ -10,6 +12,8 @@ import {
 } from "@/db/schema";
 import { getSettings, setSettingValue } from "@/lib/settings";
 import type { DeviceCategory, RiskLevel } from "@/lib/types";
+
+const execFileAsync = promisify(execFile);
 
 type DiscoveredDevice = {
   confidence: number;
@@ -142,13 +146,29 @@ function inferName(device: DiscoveredDevice) {
   return `${device.vendor ?? "IoT"} device ${device.ipAddress}`;
 }
 
-async function probeTcpPort(host: string, port: number) {
+function parsePositiveInteger(value: string | undefined, fallback: number, maximum?: number) {
+  const parsed = Number.parseInt(value ?? "", 10);
+  const safeValue = Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+
+  return maximum ? Math.min(safeValue, maximum) : safeValue;
+}
+
+function parseScanPorts(value: string | undefined) {
+  const ports = (value ?? "")
+    .split(",")
+    .map((port) => Number.parseInt(port.trim(), 10))
+    .filter((port) => Number.isInteger(port) && port > 0 && port <= 65535);
+
+  return ports.length > 0 ? Array.from(new Set(ports)) : [80, 443, 1883, 502, 8081, 6668];
+}
+
+async function probeTcpPort(host: string, port: number, timeoutMs: number) {
   return new Promise<boolean>((resolve) => {
     const socket = net.createConnection({ host, port });
     const timeout = setTimeout(() => {
       socket.destroy();
       resolve(false);
-    }, 550);
+    }, timeoutMs);
 
     socket.once("connect", () => {
       clearTimeout(timeout);
@@ -161,6 +181,21 @@ async function probeTcpPort(host: string, port: number) {
       resolve(false);
     });
   });
+}
+
+async function pingHost(host: string, timeoutMs: number) {
+  const timeoutSeconds = Math.max(1, Math.ceil(timeoutMs / 1000));
+  const args =
+    process.platform === "win32"
+      ? ["-n", "1", "-w", String(timeoutMs), host]
+      : ["-c", "1", "-W", String(timeoutSeconds), host];
+
+  try {
+    await execFileAsync("ping", args, { timeout: timeoutMs + 750 });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function getIpRange(startIp: string, endIp: string) {
@@ -177,25 +212,29 @@ function getIpRange(startIp: string, endIp: string) {
 
 async function runLiveScan() {
   const settings = await getSettings();
-  const ports = [80, 443, 1883, 502, 8081, 6668];
-  const addresses = getIpRange(settings.scanStartIp, settings.scanEndIp).slice(0, 32);
+  const ports = parseScanPorts(settings.scanPorts);
+  const timeoutMs = parsePositiveInteger(settings.scanTimeoutMs, 1200, 10000);
+  const addressLimit = parsePositiveInteger(settings.scanAddressLimit, 32, 254);
+  const pingEnabled = settings.scanPingEnabled === "true";
+  const addresses = getIpRange(settings.scanStartIp, settings.scanEndIp).slice(0, addressLimit);
   const found: DiscoveredDevice[] = [];
 
   async function scanAddress(ipAddress: string): Promise<DiscoveredDevice | null> {
     const openPorts = (
       await Promise.all(
         ports.map(async (port) => ({
-          open: await probeTcpPort(ipAddress, port),
+          open: await probeTcpPort(ipAddress, port, timeoutMs),
           port,
         })),
       )
     )
       .filter((result) => result.open)
       .map((result) => result.port);
+    const reachable = openPorts.length > 0 || (pingEnabled && (await pingHost(ipAddress, timeoutMs)));
 
-    if (openPorts.length > 0) {
+    if (reachable) {
       return {
-        confidence: Math.min(95, 45 + openPorts.length * 12),
+        confidence: openPorts.length > 0 ? Math.min(95, 45 + openPorts.length * 12) : 40,
         discoveredAt: new Date(),
         hostname: null,
         id: `live-${ipAddress.replaceAll(".", "-")}`,
@@ -273,7 +312,7 @@ export async function runDiscoveryScan() {
     key: "diagnosticDiscoveryScan",
     label: "Discovery scan",
     section: "diagnostics",
-    value: `${new Date().toLocaleString("en-IE")}: ${mode === "live" ? "Live" : "Mock"} scan completed. ${results.length} device${results.length === 1 ? "" : "s"} found across ${mode === "live" ? "the configured live range" : "mock fixtures"}.`,
+    value: `${new Date().toLocaleString("en-IE")}: ${mode === "live" ? "Live" : "Mock"} scan completed. ${results.length} device${results.length === 1 ? "" : "s"} found across ${mode === "live" ? `${settings.scanStartIp}-${settings.scanEndIp} using ports ${settings.scanPorts}, ${settings.scanTimeoutMs}ms timeout, ping ${settings.scanPingEnabled === "true" ? "on" : "off"}` : "mock fixtures"}.`,
   });
 
   return {
