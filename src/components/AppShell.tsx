@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { HeaderStatus } from "@/components/HeaderStatus";
 import { navigationItems } from "@/lib/navigation";
+import { getSettings } from "@/lib/settings";
 
 type AppShellProps = {
   children: ReactNode;
@@ -11,12 +12,16 @@ type AppShellProps = {
   description: string;
 };
 
-export function AppShell({
+export async function AppShell({
   children,
   description,
   eyebrow = "Local smart-home dashboard",
   title,
 }: AppShellProps) {
+  const settings = await getSettings();
+  const discoveryMode =
+    settings.discoveryMode === "live" ? "Live discovery" : "Mock discovery";
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -44,7 +49,7 @@ export function AppShell({
             <span className="status-dot" />
             Local system online
           </div>
-          <small>Demo data · MQTT ready</small>
+          <small>SQLite data · {discoveryMode} · MQTT ready</small>
         </div>
       </aside>
 
@@ -68,7 +73,7 @@ export function AppShell({
           </div>
           <div className="page-header-meta" aria-label="System status">
             <span className="meta-dot" />
-            Local · demo mode
+            Local · {discoveryMode.toLowerCase()}
           </div>
           <HeaderStatus />
         </header>

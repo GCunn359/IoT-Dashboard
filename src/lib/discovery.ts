@@ -8,7 +8,7 @@ import {
   latestStates,
   rooms as roomTable,
 } from "@/db/schema";
-import { getSettings } from "@/lib/settings";
+import { getSettings, setSettingValue } from "@/lib/settings";
 import type { DeviceCategory, RiskLevel } from "@/lib/types";
 
 type DiscoveredDevice = {
@@ -181,7 +181,7 @@ async function runLiveScan() {
   const addresses = getIpRange(settings.scanStartIp, settings.scanEndIp).slice(0, 32);
   const found: DiscoveredDevice[] = [];
 
-  for (const ipAddress of addresses) {
+  async function scanAddress(ipAddress: string): Promise<DiscoveredDevice | null> {
     const openPorts = (
       await Promise.all(
         ports.map(async (port) => ({
@@ -194,7 +194,7 @@ async function runLiveScan() {
       .map((result) => result.port);
 
     if (openPorts.length > 0) {
-      found.push({
+      return {
         confidence: Math.min(95, 45 + openPorts.length * 12),
         discoveredAt: new Date(),
         hostname: null,
@@ -205,8 +205,17 @@ async function runLiveScan() {
         source: "live",
         status: "new",
         vendor: null,
-      });
+      };
     }
+
+    return null;
+  }
+
+  const batchSize = 8;
+  for (let index = 0; index < addresses.length; index += batchSize) {
+    const batch = addresses.slice(index, index + batchSize);
+    const results = await Promise.all(batch.map(scanAddress));
+    found.push(...results.filter((device): device is DiscoveredDevice => Boolean(device)));
   }
 
   return found;
@@ -260,6 +269,17 @@ export async function runDiscoveryScan() {
         }));
 
   await persistDiscoveryResults(results);
+  await setSettingValue({
+    key: "diagnosticDiscoveryScan",
+    label: "Discovery scan",
+    section: "diagnostics",
+    value: `${new Date().toLocaleString("en-IE")}: ${mode === "live" ? "Live" : "Mock"} scan completed. ${results.length} device${results.length === 1 ? "" : "s"} found across ${mode === "live" ? "the configured live range" : "mock fixtures"}.`,
+  });
+
+  return {
+    mode,
+    resultCount: results.length,
+  };
 }
 
 export async function getDiscoveredDevices() {

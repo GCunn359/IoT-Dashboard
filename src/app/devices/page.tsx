@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { AppShell } from "@/components/AppShell";
 import { DeviceGrid, SummaryGrid } from "@/components/Cards";
 import { PageSection } from "@/components/PageSections";
+import { PendingSubmitButton } from "@/components/PendingSubmitButton";
 import {
   approveDiscoveredDevice,
   getDiscoveredDevices,
@@ -23,8 +24,10 @@ export const dynamic = "force-dynamic";
 
 export default async function DevicesPage() {
   const devices = await getPersistedDevices();
-  const discoveredDevices = await getDiscoveredDevices();
   const settings = await getSettings();
+  const discoveredDevices = (await getDiscoveredDevices()).filter(
+    (device) => device.source === (settings.discoveryMode === "live" ? "live" : "mock"),
+  );
   const cards = getDeviceSummaryCards(devices);
 
   async function addDevice(formData: FormData) {
@@ -39,6 +42,7 @@ export default async function DevicesPage() {
 
     await runDiscoveryScan();
     revalidatePath("/devices");
+    revalidatePath("/settings");
   }
 
   async function approveDiscovery(formData: FormData) {
@@ -72,11 +76,15 @@ export default async function DevicesPage() {
                 Live discovery should only run on the TrueNAS host that can reach
                 the IoT subnet.
               </p>
+              <p>
+                Last scan: <strong>{settings.diagnosticDiscoveryScan ?? "No scan has run yet"}</strong>
+              </p>
             </div>
             <form action={scanForDevices}>
-              <button className="primary-button compact" type="submit">
-                Run discovery scan
-              </button>
+              <PendingSubmitButton
+                label={settings.discoveryMode === "live" ? "Run live scan" : "Run mock scan"}
+                pendingLabel={settings.discoveryMode === "live" ? "Scanning IoT subnet..." : "Loading mock scan..."}
+              />
             </form>
             <div className="discovery-result-grid">
               {discoveredDevices.length > 0 ? (
@@ -106,7 +114,7 @@ export default async function DevicesPage() {
                 ))
               ) : (
                 <div className="discovery-empty">
-                  No scan results yet. Run a mock scan to preview the onboarding flow.
+                  No {settings.discoveryMode === "live" ? "live" : "mock"} scan results yet. Run discovery to update this list.
                 </div>
               )}
             </div>
