@@ -1,4 +1,5 @@
 import { eq, sql } from "drizzle-orm";
+import dns from "node:dns/promises";
 import net from "node:net";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -22,10 +23,18 @@ type DiscoveredDevice = {
   id: string;
   ipAddress: string;
   likelyType: DeviceCategory;
+  metadata: DiscoveryMetadata;
   openPorts: number[];
   source: "live" | "mock";
   status: "added" | "ignored" | "new";
   vendor: string | null;
+};
+
+type DiscoveryMetadata = {
+  endpoints: string[];
+  httpTitles: string[];
+  notes: string[];
+  services: string[];
 };
 
 type LiveScanResult = {
@@ -47,6 +56,12 @@ const mockDiscoveredDevices: Array<Omit<DiscoveredDevice, "discoveredAt" | "stat
     id: "mock-192-168-30-21",
     ipAddress: "192.168.30.21",
     likelyType: "lighting",
+    metadata: {
+      endpoints: ["http://192.168.30.21/", "tcp/6668"],
+      httpTitles: ["Tuya Wi-Fi module"],
+      notes: ["Mock metadata example"],
+      services: ["HTTP", "Tuya local control"],
+    },
     openPorts: [6668, 80],
     source: "mock",
     vendor: "Tuya",
@@ -57,6 +72,12 @@ const mockDiscoveredDevices: Array<Omit<DiscoveredDevice, "discoveredAt" | "stat
     id: "mock-192-168-30-37",
     ipAddress: "192.168.30.37",
     likelyType: "socket",
+    metadata: {
+      endpoints: ["http://192.168.30.37:8081/", "mqtt://192.168.30.37:1883"],
+      httpTitles: ["Sonoff switch"],
+      notes: ["Mock metadata example"],
+      services: ["HTTP API", "MQTT"],
+    },
     openPorts: [8081, 1883],
     source: "mock",
     vendor: "Sonoff",
@@ -67,6 +88,12 @@ const mockDiscoveredDevices: Array<Omit<DiscoveredDevice, "discoveredAt" | "stat
     id: "mock-192-168-30-45",
     ipAddress: "192.168.30.45",
     likelyType: "solar",
+    metadata: {
+      endpoints: ["http://192.168.30.45/", "modbus://192.168.30.45:502"],
+      httpTitles: ["eSolar AIO3"],
+      notes: ["Mock metadata example"],
+      services: ["HTTP", "Modbus TCP"],
+    },
     openPorts: [80, 502],
     source: "mock",
     vendor: "eSolar",
@@ -77,6 +104,12 @@ const mockDiscoveredDevices: Array<Omit<DiscoveredDevice, "discoveredAt" | "stat
     id: "mock-192-168-30-60",
     ipAddress: "192.168.30.60",
     likelyType: "security",
+    metadata: {
+      endpoints: ["https://192.168.30.60/"],
+      httpTitles: ["AJAX Hub"],
+      notes: ["Mock metadata example"],
+      services: ["HTTPS"],
+    },
     openPorts: [443],
     source: "mock",
     vendor: "AJAX",
@@ -91,6 +124,7 @@ async function ensureDiscoveryTable() {
       ip_address TEXT NOT NULL,
       hostname TEXT,
       vendor TEXT,
+      metadata TEXT DEFAULT '{}' NOT NULL,
       open_ports TEXT NOT NULL,
       likely_type TEXT NOT NULL,
       confidence INTEGER DEFAULT 0 NOT NULL,
@@ -99,6 +133,12 @@ async function ensureDiscoveryTable() {
       discovered_at INTEGER NOT NULL
     )
   `);
+
+  try {
+    db.run(sql`ALTER TABLE discovered_devices ADD COLUMN metadata TEXT DEFAULT '{}' NOT NULL`);
+  } catch {
+    // Existing databases already have the column.
+  }
 }
 
 function slugify(value: string) {
@@ -123,7 +163,11 @@ function getRoomIcon(room: string) {
 }
 
 function inferIntegration(device: DiscoveredDevice) {
-  return device.vendor ?? (device.source === "mock" ? "Mock discovery" : "Network discovery");
+  return (
+    device.vendor ??
+    device.metadata.services.at(0) ??
+    (device.source === "mock" ? "Mock discovery" : "Network discovery")
+  );
 }
 
 function inferRiskLevel(category: DeviceCategory): RiskLevel {
@@ -139,7 +183,7 @@ function inferRiskLevel(category: DeviceCategory): RiskLevel {
 }
 
 function inferRoom(device: DiscoveredDevice) {
-  const text = `${device.hostname ?? ""} ${device.vendor ?? ""}`.toLowerCase();
+  const text = `${device.hostname ?? ""} ${device.vendor ?? ""} ${device.metadata.httpTitles.join(" ")} ${device.metadata.notes.join(" ")}`.toLowerCase();
 
   if (text.includes("kitchen")) return "Kitchen";
   if (text.includes("washer") || text.includes("solar") || text.includes("esolar")) {
@@ -155,7 +199,116 @@ function inferName(device: DiscoveredDevice) {
     return device.hostname.replace(".local", "").replace(/-/g, " ");
   }
 
+  const title = device.metadata.httpTitles.at(0);
+  if (title) {
+    return title;
+  }
+
   return `${device.vendor ?? "IoT"} device ${device.ipAddress}`;
+}
+
+function emptyMetadata(): DiscoveryMetadata {
+  return {
+    endpoints: [],
+    httpTitles: [],
+    notes: [],
+    services: [],
+  };
+}
+
+function uniqueValues(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean))).slice(0, 12);
+}
+
+function detectVendor(text: string, openPorts: number[]) {
+  const value = text.toLowerCase();
+
+  if (value.includes("tasmota")) return "Tasmota";
+  if (value.includes("sonoff") || openPorts.includes(8081)) return "Sonoff";
+  if (value.includes("tuya") || openPorts.includes(6668)) return "Tuya";
+  if (value.includes("shelly")) return "Shelly";
+  if (value.includes("esphome")) return "ESPHome";
+  if (value.includes("esolar") || value.includes("aio3")) return "eSolar";
+  if (value.includes("ajax")) return "AJAX";
+
+  return null;
+}
+
+function inferTypeFromClues(text: string, openPorts: number[]): DeviceCategory {
+  const value = text.toLowerCase();
+
+  if (value.includes("solar") || value.includes("inverter") || value.includes("aio3")) return "solar";
+  if (value.includes("alarm") || value.includes("ajax") || value.includes("security")) return "security";
+  if (value.includes("light") || value.includes("dimmer") || value.includes("lamp")) return "lighting";
+  if (value.includes("socket") || value.includes("plug") || value.includes("switch") || openPorts.includes(6668)) return "socket";
+  if (value.includes("thermostat") || value.includes("heating")) return "heating";
+  if (openPorts.includes(502)) return "utility";
+
+  return openPorts.includes(1883) ? "utility" : "environment";
+}
+
+function getServiceNames(openPorts: number[]) {
+  const serviceNames: Record<number, string> = {
+    80: "HTTP",
+    443: "HTTPS",
+    1883: "MQTT",
+    502: "Modbus TCP",
+    8080: "HTTP alternate",
+    8081: "HTTP API",
+    6668: "Tuya local control",
+  };
+
+  return openPorts.map((port) => serviceNames[port] ?? `TCP ${port}`);
+}
+
+async function resolveHostname(ipAddress: string) {
+  try {
+    const names = await dns.reverse(ipAddress);
+    return names.at(0) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function probeHttpMetadata(ipAddress: string, openPorts: number[], timeoutMs: number) {
+  const metadata = emptyMetadata();
+  const httpPorts = openPorts.filter((port) => [80, 443, 8080, 8081].includes(port));
+
+  await Promise.all(
+    httpPorts.map(async (port) => {
+      const protocol = port === 443 ? "https" : "http";
+      const baseUrl = `${protocol}://${ipAddress}${port === 80 || port === 443 ? "" : `:${port}`}`;
+      metadata.endpoints.push(`${baseUrl}/`);
+
+      try {
+        const response = await fetch(baseUrl, {
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+        const server = response.headers.get("server");
+        const contentType = response.headers.get("content-type");
+        const body = (await response.text()).slice(0, 4096);
+        const title = body.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/\s+/g, " ").trim();
+
+        if (title) {
+          metadata.httpTitles.push(title);
+        }
+
+        metadata.notes.push(
+          `${baseUrl} returned HTTP ${response.status}${server ? ` · server ${server}` : ""}${contentType ? ` · ${contentType}` : ""}`,
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "No HTTP response";
+        metadata.notes.push(`${baseUrl} metadata probe failed: ${message}`);
+      }
+    }),
+  );
+
+  metadata.endpoints = uniqueValues(metadata.endpoints);
+  metadata.httpTitles = uniqueValues(metadata.httpTitles);
+  metadata.notes = uniqueValues(metadata.notes);
+  metadata.services = uniqueValues(getServiceNames(openPorts));
+
+  return metadata;
 }
 
 function parsePositiveInteger(value: string | undefined, fallback: number, maximum?: number) {
@@ -263,17 +416,37 @@ async function runLiveScan(): Promise<LiveScanResult> {
         pingReachable += 1;
       }
 
+      const hostname = await resolveHostname(ipAddress);
+      const metadata = await probeHttpMetadata(ipAddress, openPorts, timeoutMs);
+      const clueText = `${hostname ?? ""} ${metadata.httpTitles.join(" ")} ${metadata.notes.join(" ")} ${metadata.services.join(" ")}`;
+      const vendor = detectVendor(clueText, openPorts);
+
       return {
-        confidence: openPorts.length > 0 ? Math.min(95, 45 + openPorts.length * 12) : 40,
+        confidence: Math.min(
+          95,
+          (openPorts.length > 0 ? 45 + openPorts.length * 12 : 40) +
+            (hostname ? 8 : 0) +
+            (metadata.httpTitles.length > 0 ? 10 : 0) +
+            (vendor ? 10 : 0),
+        ),
         discoveredAt: new Date(),
-        hostname: null,
+        hostname,
         id: `live-${ipAddress.replaceAll(".", "-")}`,
         ipAddress,
-        likelyType: openPorts.includes(1883) ? "utility" : "environment",
+        likelyType: inferTypeFromClues(clueText, openPorts),
+        metadata: {
+          ...metadata,
+          notes: uniqueValues([
+            ...metadata.notes,
+            openPorts.length > 0
+              ? `Open services: ${metadata.services.join(", ")}`
+              : "Host responds to ping but no configured TCP ports are open.",
+          ]),
+        },
         openPorts,
         source: "live",
         status: "new",
-        vendor: null,
+        vendor,
       };
     }
 
@@ -317,6 +490,7 @@ async function persistDiscoveryResults(results: DiscoveredDevice[]) {
       id: device.id,
       ipAddress: device.ipAddress,
       likelyType: device.likelyType,
+      metadata: device.metadata,
       openPorts: device.openPorts,
       source: device.source,
       status: existing[0]?.status ?? "new",
@@ -381,11 +555,47 @@ export async function getDiscoveredDevices() {
     id: row.id,
     ipAddress: row.ipAddress,
     likelyType: row.likelyType as DeviceCategory,
+    metadata: parseDiscoveryMetadata(row.metadata),
     openPorts: Array.isArray(row.openPorts) ? (row.openPorts as number[]) : [],
     source: row.source as "live" | "mock",
     status: row.status as "added" | "ignored" | "new",
     vendor: row.vendor,
   }));
+}
+
+export async function deleteDiscoveredDevice(id: string) {
+  await ensureDiscoveryTable();
+
+  const db = createDb();
+  await db.delete(discoveredDevices).where(eq(discoveredDevices.id, id));
+}
+
+export async function clearMockDiscoveredDevices() {
+  await ensureDiscoveryTable();
+
+  const db = createDb();
+  await db.delete(discoveredDevices).where(eq(discoveredDevices.source, "mock"));
+  await setSettingValue({
+    key: "diagnosticDiscoveryScan",
+    label: "Discovery scan",
+    section: "diagnostics",
+    value: `${new Date().toLocaleString("en-IE")}: Cleared mock discovery results.`,
+  });
+}
+
+function parseDiscoveryMetadata(value: unknown): DiscoveryMetadata {
+  if (!value || typeof value !== "object") {
+    return emptyMetadata();
+  }
+
+  const metadata = value as Partial<DiscoveryMetadata>;
+
+  return {
+    endpoints: Array.isArray(metadata.endpoints) ? metadata.endpoints.filter(Boolean) : [],
+    httpTitles: Array.isArray(metadata.httpTitles) ? metadata.httpTitles.filter(Boolean) : [],
+    notes: Array.isArray(metadata.notes) ? metadata.notes.filter(Boolean) : [],
+    services: Array.isArray(metadata.services) ? metadata.services.filter(Boolean) : [],
+  };
 }
 
 export async function approveDiscoveredDevice(id: string) {
@@ -409,6 +619,7 @@ export async function approveDiscoveredDevice(id: string) {
     id: discovered.id,
     ipAddress: discovered.ipAddress,
     likelyType: discovered.likelyType as DeviceCategory,
+    metadata: parseDiscoveryMetadata(discovered.metadata),
     openPorts: Array.isArray(discovered.openPorts)
       ? (discovered.openPorts as number[])
       : [],
@@ -454,6 +665,9 @@ export async function approveDiscoveredDevice(id: string) {
         metrics: [
           { label: "IP", value: device.ipAddress },
           { label: "Ports", value: device.openPorts.join(", ") || "Unknown" },
+          { label: "Services", value: device.metadata.services.join(", ") || "Unknown" },
+          { label: "Endpoints", value: device.metadata.endpoints.join(", ") || "None found" },
+          { label: "Discovery notes", value: device.metadata.notes.join(" | ") || "No metadata found" },
         ],
       },
       updatedAt: now,

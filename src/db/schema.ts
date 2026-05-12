@@ -87,6 +87,7 @@ export const discoveredDevices = sqliteTable("discovered_devices", {
   ipAddress: text("ip_address").notNull(),
   hostname: text("hostname"),
   vendor: text("vendor"),
+  metadata: text("metadata", { mode: "json" }).notNull().default("{}"),
   openPorts: text("open_ports", { mode: "json" }).notNull(),
   likelyType: text("likely_type").notNull(),
   confidence: integer("confidence").notNull().default(0),

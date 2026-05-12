@@ -2211,12 +2211,26 @@ svg .immersion-element.on {
   margin: 0 0 0.25rem;
 }
 
+.discovery-result small {
+  display: block;
+  line-height: 1.45;
+  margin-top: 0.22rem;
+}
+
 .discovery-result strong {
   color: #2f7d16;
   font-size: 0.82rem;
   font-weight: 950;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.discovery-actions {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  justify-content: flex-end;
 }
 
 .control-button,
@@ -2233,6 +2247,13 @@ svg .immersion-element.on {
   margin-top: 1rem;
   padding: 0.85rem 1.1rem;
   width: 100%;
+}
+
+.primary-button.subtle {
+  background: #eef8e8;
+  border: 1px solid rgba(101, 163, 13, 0.18);
+  box-shadow: none;
+  color: #2f7d16;
 }
 
 .stack {

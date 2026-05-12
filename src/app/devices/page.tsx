@@ -6,6 +6,8 @@ import { PageSection } from "@/components/PageSections";
 import { PendingSubmitButton } from "@/components/PendingSubmitButton";
 import {
   approveDiscoveredDevice,
+  clearMockDiscoveredDevices,
+  deleteDiscoveredDevice,
   getDiscoveredDevices,
   runDiscoveryScan,
 } from "@/lib/discovery";
@@ -56,6 +58,25 @@ export default async function DevicesPage() {
     }
   }
 
+  async function deleteDiscovery(formData: FormData) {
+    "use server";
+
+    const id = String(formData.get("id") ?? "");
+
+    if (id) {
+      await deleteDiscoveredDevice(id);
+      revalidatePath("/devices");
+    }
+  }
+
+  async function clearMockDiscovery() {
+    "use server";
+
+    await clearMockDiscoveredDevices();
+    revalidatePath("/devices");
+    revalidatePath("/settings");
+  }
+
   return (
     <AppShell
       description="A complete device inventory with rooms, integrations, status, capabilities, and risk levels."
@@ -86,6 +107,11 @@ export default async function DevicesPage() {
                 pendingLabel={settings.discoveryMode === "live" ? "Scanning IoT subnet..." : "Loading mock scan..."}
               />
             </form>
+            <form action={clearMockDiscovery}>
+              <button className="primary-button compact subtle" type="submit">
+                Clear mock results
+              </button>
+            </form>
             <div className="discovery-result-grid">
               {discoveredDevices.length > 0 ? (
                 discoveredDevices.map((device) => (
@@ -99,16 +125,48 @@ export default async function DevicesPage() {
                       <small>
                         {device.ipAddress} · ports {device.openPorts.join(", ") || "none"}
                       </small>
+                      <small>
+                        Services: {device.metadata.services.join(", ") || "none detected"}
+                      </small>
+                      <small>
+                        Endpoints: {device.metadata.endpoints.join(", ") || "none detected"}
+                      </small>
+                      {device.metadata.httpTitles.length > 0 ? (
+                        <small>
+                          Titles: {device.metadata.httpTitles.join(", ")}
+                        </small>
+                      ) : null}
+                      {device.metadata.notes.length > 0 ? (
+                        <small>
+                          Metadata: {device.metadata.notes.slice(0, 3).join(" | ")}
+                        </small>
+                      ) : null}
                     </div>
                     {device.status === "added" ? (
-                      <strong>Added</strong>
+                      <div className="discovery-actions">
+                        <strong>Added</strong>
+                        <form action={deleteDiscovery}>
+                          <input name="id" type="hidden" value={device.id} />
+                          <button className="primary-button compact subtle" type="submit">
+                            Remove result
+                          </button>
+                        </form>
+                      </div>
                     ) : (
-                      <form action={approveDiscovery}>
-                        <input name="id" type="hidden" value={device.id} />
-                        <button className="primary-button compact" type="submit">
-                          Add to dashboard
-                        </button>
-                      </form>
+                      <div className="discovery-actions">
+                        <form action={approveDiscovery}>
+                          <input name="id" type="hidden" value={device.id} />
+                          <button className="primary-button compact" type="submit">
+                            Add to dashboard
+                          </button>
+                        </form>
+                        <form action={deleteDiscovery}>
+                          <input name="id" type="hidden" value={device.id} />
+                          <button className="primary-button compact subtle" type="submit">
+                            Delete result
+                          </button>
+                        </form>
+                      </div>
                     )}
                   </article>
                 ))
