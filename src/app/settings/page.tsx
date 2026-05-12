@@ -2,13 +2,6 @@ import { revalidatePath } from "next/cache";
 import net from "node:net";
 
 import { AppShell } from "@/components/AppShell";
-import {
-  isSettingsPinConfigured,
-  isSettingsUnlocked,
-  lockSettings,
-  requireSettingsUnlock,
-  unlockSettings,
-} from "@/lib/settings-auth";
 import { sampleMqttTopic } from "@/lib/mqtt";
 import {
   getSettings,
@@ -24,85 +17,11 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export default async function SettingsPage() {
-  async function unlockSettingsAction(formData: FormData) {
-    "use server";
-
-    const pin = formData.get("settingsPin");
-
-    if (typeof pin === "string") {
-      await unlockSettings(pin);
-    }
-
-    revalidatePath("/settings");
-  }
-
-  async function lockSettingsAction() {
-    "use server";
-
-    await lockSettings();
-    revalidatePath("/settings");
-  }
-
-  const pinConfigured = isSettingsPinConfigured();
-  const settingsUnlocked = await isSettingsUnlocked();
-
-  if (!pinConfigured || !settingsUnlocked) {
-    return (
-      <AppShell
-        description="Enter the local admin PIN to manage network, discovery, integration, and safety settings."
-        title="Settings locked"
-      >
-        <section className="settings-lock-panel">
-          <div className="settings-lock-card">
-            <span className="settings-lock-icon" aria-hidden="true">
-              🔒
-            </span>
-            <div>
-              <p className="muted">Admin protection</p>
-              <h2>
-                {pinConfigured
-                  ? "PIN required"
-                  : "SETTINGS_PIN is not configured"}
-              </h2>
-              <p>
-                {pinConfigured
-                  ? "Settings are protected because they control network access, discovery, integrations, and high-risk control behaviour."
-                  : "Add SETTINGS_PIN to the deployment environment to enable the protected settings area."}
-              </p>
-            </div>
-            {pinConfigured ? (
-              <form action={unlockSettingsAction} className="settings-pin-form">
-                <label>
-                  <span>Settings PIN</span>
-                  <input
-                    autoComplete="current-password"
-                    inputMode="numeric"
-                    name="settingsPin"
-                    placeholder="Enter PIN"
-                    type="password"
-                  />
-                </label>
-                <button className="primary-button compact" type="submit">
-                  Unlock settings
-                </button>
-              </form>
-            ) : null}
-          </div>
-        </section>
-      </AppShell>
-    );
-  }
-
   const settings = await getSettings();
   const statusCards = getStatusCards(settings);
 
   async function saveSettings(formData: FormData) {
     "use server";
-
-    if (!(await requireSettingsUnlock())) {
-      revalidatePath("/settings");
-      return;
-    }
 
     const currentSettings = await getSettings();
     const nextSettings: SettingsMap = {};
@@ -128,11 +47,6 @@ export default async function SettingsPage() {
   async function checkMqttConnection() {
     "use server";
 
-    if (!(await requireSettingsUnlock())) {
-      revalidatePath("/settings");
-      return;
-    }
-
     const currentSettings = await getSettings();
     const host = currentSettings.mqttHost;
     const port = Number.parseInt(currentSettings.mqttPort ?? "1883", 10);
@@ -153,11 +67,6 @@ export default async function SettingsPage() {
 
   async function checkGatewayReachability() {
     "use server";
-
-    if (!(await requireSettingsUnlock())) {
-      revalidatePath("/settings");
-      return;
-    }
 
     const currentSettings = await getSettings();
     const gateway = currentSettings.iotGatewayIp;
@@ -185,11 +94,6 @@ export default async function SettingsPage() {
 
   async function sampleMqttMessages() {
     "use server";
-
-    if (!(await requireSettingsUnlock())) {
-      revalidatePath("/settings");
-      return;
-    }
 
     const currentSettings = await getSettings();
     const checkedAt = new Date().toLocaleString("en-IE");
@@ -239,16 +143,6 @@ export default async function SettingsPage() {
             <span>MQTT broker optional</span>
           </div>
         </article>
-
-        <form action={lockSettingsAction} className="settings-lock-strip">
-          <div>
-            <span>Settings unlocked</span>
-            <strong>Admin changes are available for 30 minutes.</strong>
-          </div>
-          <button className="primary-button compact" type="submit">
-            Lock settings
-          </button>
-        </form>
 
         <article className="settings-section diagnostics">
           <div className="settings-section-heading">
