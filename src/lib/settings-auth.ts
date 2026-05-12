@@ -57,7 +57,7 @@ export async function unlockSettings(pinAttempt: string) {
   cookieStore.set(settingsCookieName, getUnlockToken(pin), {
     httpOnly: true,
     maxAge: 60 * 30,
-    path: "/settings",
+    path: "/",
     sameSite: "strict",
     secure: config.settingsCookieSecure,
   });
@@ -67,11 +67,12 @@ export async function unlockSettings(pinAttempt: string) {
 
 export async function lockSettings() {
   const cookieStore = await cookies();
-  cookieStore.delete(settingsCookieName);
+  cookieStore.delete({
+    name: settingsCookieName,
+    path: "/",
+  });
 }
 
 export async function requireSettingsUnlock() {
-  if (!(await isSettingsUnlocked())) {
-    throw new Error("Settings page is locked.");
-  }
+  return isSettingsUnlocked();
 }

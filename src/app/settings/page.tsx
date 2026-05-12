@@ -99,7 +99,11 @@ export default async function SettingsPage() {
   async function saveSettings(formData: FormData) {
     "use server";
 
-    await requireSettingsUnlock();
+    if (!(await requireSettingsUnlock())) {
+      revalidatePath("/settings");
+      return;
+    }
+
     const currentSettings = await getSettings();
     const nextSettings: SettingsMap = {};
 
@@ -124,7 +128,11 @@ export default async function SettingsPage() {
   async function checkMqttConnection() {
     "use server";
 
-    await requireSettingsUnlock();
+    if (!(await requireSettingsUnlock())) {
+      revalidatePath("/settings");
+      return;
+    }
+
     const currentSettings = await getSettings();
     const host = currentSettings.mqttHost;
     const port = Number.parseInt(currentSettings.mqttPort ?? "1883", 10);
@@ -146,7 +154,11 @@ export default async function SettingsPage() {
   async function checkGatewayReachability() {
     "use server";
 
-    await requireSettingsUnlock();
+    if (!(await requireSettingsUnlock())) {
+      revalidatePath("/settings");
+      return;
+    }
+
     const currentSettings = await getSettings();
     const gateway = currentSettings.iotGatewayIp;
     const checkedAt = new Date().toLocaleString("en-IE");
@@ -174,7 +186,11 @@ export default async function SettingsPage() {
   async function sampleMqttMessages() {
     "use server";
 
-    await requireSettingsUnlock();
+    if (!(await requireSettingsUnlock())) {
+      revalidatePath("/settings");
+      return;
+    }
+
     const currentSettings = await getSettings();
     const checkedAt = new Date().toLocaleString("en-IE");
     const result = await sampleMqttTopic(currentSettings);
