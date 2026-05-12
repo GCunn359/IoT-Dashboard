@@ -17,6 +17,10 @@ const configSchema = z.object({
     .string()
     .default("false")
     .transform((value) => value.toLowerCase() === "true"),
+  settingsCookieSecure: z
+    .string()
+    .default("false")
+    .transform((value) => value.toLowerCase() === "true"),
   settingsPin: z.string().default(""),
 });
 
@@ -31,6 +35,7 @@ export function getAppConfig() {
     mqttPort: process.env.MQTT_PORT,
     mqttUsername: process.env.MQTT_USERNAME,
     mqttUseTls: process.env.MQTT_USE_TLS,
+    settingsCookieSecure: process.env.SETTINGS_COOKIE_SECURE,
     settingsPin: process.env.SETTINGS_PIN,
   });
 }

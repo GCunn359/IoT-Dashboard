@@ -46,7 +46,8 @@ export async function isSettingsUnlocked() {
 }
 
 export async function unlockSettings(pinAttempt: string) {
-  const pin = getSettingsPin();
+  const config = getAppConfig();
+  const pin = config.settingsPin.trim();
 
   if (!pin || !safeCompare(pinAttempt, pin)) {
     return false;
@@ -58,7 +59,7 @@ export async function unlockSettings(pinAttempt: string) {
     maxAge: 60 * 30,
     path: "/settings",
     sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
+    secure: config.settingsCookieSecure,
   });
 
   return true;
