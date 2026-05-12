@@ -34,7 +34,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/gcunniam/iot-dashboard:latest
-            ghcr.io/gcunniam/iot-dashboard:${{ github.sha }}
+            ghcr.io/gcunn359/iot-dashboard:latest
+            ghcr.io/gcunn359/iot-dashboard:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
